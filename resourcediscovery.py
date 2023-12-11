@@ -7,13 +7,14 @@ import argparse
 parser = argparse.ArgumentParser(description='Extract instance details and save to Excel')
 parser.add_argument('-r', '--region', help='AWS Region', required=True)
 args = parser.parse_args()
-
 # Initialize the Boto3 client with the specified region
 ec2 = boto3.client('ec2', region_name=args.region)
 autoscaling = boto3.client('autoscaling', region_name=args.region)  # New line to initialize Auto Scaling client
+rds = boto3.client('rds', region_name=args.region)  # New line to initialize RDS client
 
 # Get all instances
 instances = ec2.describe_instances()
+rds_instances = rds.describe_db_instances()
 
 # Create a new Excel workbook
 workbook = openpyxl.Workbook()
@@ -65,6 +66,30 @@ for reservation in instances['Reservations']:
             else:  # Keep row 1, row 2, and column 1 centered
                 cell.alignment = Alignment(horizontal='center', vertical='center')
         row += 1
+
+# Write headers for RDS
+rds_headers = ['RDSNAME', 'RDS Endpoint', 'Instance Type', 'State', 'Engine', 'Version', 'Remarks']
+for col, header in enumerate(rds_headers, start=2):  # Start from column B (index 2)
+    cell = sheet.cell(row=row, column=col, value=header)  # Increment the column index by 1
+    cell.font = Font(bold=True)
+    cell.fill = PatternFill(start_color="FFA07A", end_color="FFA07A", fill_type="solid")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+# Write RDS instance details to Excel
+for rds_instance in rds_instances['DBInstances']:
+    rds_name = rds_instance['DBInstanceIdentifier']
+    rds_endpoint = rds_instance['Endpoint']['Address']
+    rds_instance_type = rds_instance['DBInstanceClass']
+    rds_state = rds_instance['DBInstanceStatus']
+    rds_engine = rds_instance['Engine']
+    rds_version = rds_instance['EngineVersion']
+    rds_remarks = ''  # You can add remarks here if needed
+
+    rds_data = [rds_name, rds_endpoint, rds_instance_type, rds_state, rds_engine, rds_version, rds_remarks]
+    for col, value in enumerate(rds_data, start=2):  # Start from column B (index 2)
+        cell = sheet.cell(row=row, column=col, value=value)
+        cell.alignment = Alignment(horizontal='center', vertical='center')  
+    row += 1
 
 # Merge the cells in the first column for the "EC2" service
 service_cell = sheet.cell(row=3, column=1)

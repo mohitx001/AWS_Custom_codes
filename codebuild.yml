@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an AWS CodeBuild project
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the CodeBuild project
+  EnvironmentVariables:
+    Type: CommaDelimitedList
+    Description: List of environment variables in the format "Name=Value"
+  BuildSpec:
+    Type: String
+    Description: Contents of the buildspec file
+  ServiceRoleOption:
+    Type: String
+    Description: Choose 'new service role' or 'existing service role'
+    AllowedValues: [new service role, existing service role]
+  NewServiceRoleName:
+    Type: String
+    Description: Name of the new IAM role for the CodeBuild project
+
+Conditions:
+  CreateNewServiceRole: !Equals [!Ref ServiceRoleOption, 'new service role']
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref ProjectName
+      ServiceRole: !If [CreateNewServiceRole, !GetAtt CodeBuildRole.Arn, !Ref ExistingServiceRole]
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        EnvironmentVariables:
+          - Name: ACCOUNTID
+            Value: !Select [0, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+          - Name: ENV
+            Value: !Select [1, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+          - Name: AWS_ACCOUNT_ID
+            Value: !Select [0, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+          - Name: AWS_DEFAULT_REGION
+            Value: !Select [2, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+          - Name: ENVNODE
+            Value: !Select [3, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+          - Name: OUTPUT_DIRECTORY
+            Value: !Select [4, !Ref EnvironmentVariables]
+            Type: PLAINTEXT
+      Source:
+        Type: NO_SOURCE
+      Artifacts:
+        Type: NO_ARTIFACTS
+      BuildSpec: !Ref BuildSpec
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Condition: CreateNewServiceRole
+    Properties:
+      RoleName: !Ref NewServiceRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+  ExistingServiceRole:
+    Type: AWS::IAM::Role
+    Condition: !Not [CreateNewServiceRole]
+    Properties:
+      RoleName: !Ref ServiceRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*

@@ -7,7 +7,6 @@ import argparse
 parser = argparse.ArgumentParser(description='Extract instance details and save to Excel')
 parser.add_argument('-r', '--region', help='AWS Region', required=True)
 args = parser.parse_args()
-
 # Initialize the Boto3 client with the specified region
 ec2 = boto3.client('ec2', region_name=args.region)
 autoscaling = boto3.client('autoscaling', region_name=args.region)  # New line to initialize Auto Scaling client
