@@ -1,2 +1,0 @@
-"how to make backup of ec2 with zero downtime"
-"AWS devops exam questions"
