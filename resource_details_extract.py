@@ -111,6 +111,7 @@ for rds_instance in rds_instances['DBInstances']:
 rds_service_cell = sheet.cell(row=last_row+1, column=1)
 rds_last_row = row - 1 # 10
 sheet.merge_cells(start_row=last_row+1, start_column=1, end_row=rds_last_row, end_column=1)
+sheet.merge_cells(start_row=last_row+1, start_column=8, end_row=last_row+1, end_column=11)
 rds_service_cell.value = 'RDS'
 rds_service_cell.font = Font(bold=True)
 rds_service_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -151,6 +152,7 @@ for group in autoscaling_groups['AutoScalingGroups']:
 asg_service_cell = sheet.cell(row=rds_last_row+1, column=1)
 asg_last_row = row - 1
 sheet.merge_cells(start_row=rds_last_row+1, start_column=1, end_row=asg_last_row, end_column=1)
+sheet.merge_cells(start_row=rds_last_row+1, start_column=8, end_row=rds_last_row+1, end_column=11)
 asg_service_cell.value = 'ASG'
 asg_service_cell.font = Font(bold=True)
 asg_service_cell.alignment = Alignment(horizontal='center', vertical='center')
