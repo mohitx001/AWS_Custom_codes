@@ -30,7 +30,7 @@ account_cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_t
 sheet.merge_cells('A1:K1')
 
 # Write headers
-headers = ['Service', 'Instance_Name', 'Instance_ID', 'Instance Class', 'State', 'Platform', 'Monitoring', 'SSM_Agent', 'CW_Agent', 'AutoScalingGroup', 'Remarks']  # Updated headers
+headers = ['Service', 'Instance_Name', 'Instance_ID', 'Instance Class', 'State', 'Platform', 'Detailed Monitoring', 'SSM_Agent', 'CW_Agent', 'AutoScalingGroup', 'Remarks']  # Updated headers
 for col, header in enumerate(headers, start=1):
     cell = sheet.cell(row=2, column=col, value=header)
     cell.font = Font(bold=True)
@@ -160,4 +160,4 @@ asg_service_cell.fill = PatternFill(start_color="F08080", end_color="F08080", fi
 
 # Save the Excel workbook
 
-workbook.save(f'all_instance_details_{account_id}_{args.region}.xlsx')
+workbook.save(f'ResourceId_{account_id}_{args.region}.xlsx')
