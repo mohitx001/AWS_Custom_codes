@@ -13,6 +13,7 @@ args = parser.parse_args()
 ec2 = boto3.client('ec2', region_name=args.region)
 autoscaling = boto3.client('autoscaling', region_name=args.region)  # New line to initialize Auto Scaling client
 # Get all instances
+#ssm = boto3.client('ssm' ,  region_name=args.region)
 instances = ec2.describe_instances()
 
 # Create a new Excel workbook
@@ -42,6 +43,42 @@ row = 3
 for reservation in instances['Reservations']:
     for instance in reservation['Instances']:
         instance_id = instance['InstanceId']
+
+        ##test
+                
+        # Check if SSM agent is installed
+        ssm_client = boto3.client('ssm', region_name=args.region)
+        ssm_status = ''
+        try:
+            ssm_response = ssm_client.describe_instance_information(InstanceInformationFilterList=[{'key': 'InstanceIds', 'valueSet': [instance_id]}])
+            if ssm_response['InstanceInformationList']:
+                ssm_status = 'Installed'
+            else:
+                ssm_status = 'Not Installed'
+        except ssm_client.exceptions.InvalidInstanceId:
+            ssm_status = 'Invalid Instance ID or Not Installed'
+        
+        # Check if CloudWatch agent is installed
+        cw_client = boto3.client('cloudwatch', region_name=args.region)
+        cw_status = ''
+        try:
+            cw_response = cw_client.describe_alarms_for_metric(
+                MetricName='Memory % Committed Bytes In Use',
+                Namespace='CWAgent',
+                Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}]
+            )
+            if cw_response['MetricAlarms']:
+                cw_status = 'Installed'
+            else:
+                cw_status = 'Not Installed'
+        except cw_client.exceptions.ResourceNotFoundException:
+            cw_status = 'Not Installed or No Alarms Configured'
+
+
+
+
+
+            
         instance_name = ''
         for tag in instance['Tags']:
             if tag['Key'] == 'Name':
@@ -57,7 +94,7 @@ for reservation in instances['Reservations']:
         response = autoscaling.describe_auto_scaling_instances(InstanceIds=[instance_id])
         auto_scaling_group = response['AutoScalingInstances'][0]['AutoScalingGroupName'] if response['AutoScalingInstances'] else 'Not in Auto Scaling Group'
 
-        data = ['EC2', instance_name, instance_id, instance_class, state, platform, monitoring_state, '', '', auto_scaling_group, '']  # Updated data
+        data = ['EC2', instance_name, instance_id, instance_class, state, platform, monitoring_state, ssm_status, cw_status, auto_scaling_group, '']  # Updated data
         for col, value in enumerate(data, start=1):
             cell = sheet.cell(row=row, column=col, value=value)
             if row > 2 or col > 1:  # Align everything to the left except for row 1, row 2, and column 1
@@ -157,6 +194,8 @@ asg_service_cell.value = 'ASG'
 asg_service_cell.font = Font(bold=True)
 asg_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 asg_service_cell.fill = PatternFill(start_color="F08080", end_color="F08080", fill_type="solid")
+
+
 
 # Save the Excel workbook
 
