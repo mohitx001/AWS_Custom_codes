@@ -11,7 +11,7 @@ def create_disk_alarm(region, instance_id):
     # Create SNS topic ARNs
     sns_urgent = f'arn:aws:sns:{region}:{account_id}:rackspace-support-urgent'
     sns_emergency = f'arn:aws:sns:{region}:{account_id}:rackspace-support-emergency'
-    sns_customer = 'arn:aws:sns:ap-southeast-1:347967984206:347967984206-ap-southeast-1-modops-alerts'
+    sns_customer = 'arn:aws:sns:us-east-2:508437877980:508437877980-us-east-2-modops-alerts'
 
     # Create CloudWatch client
     cw = session.client('cloudwatch')
@@ -61,7 +61,7 @@ def create_memory_alarm(region, instance_id):
 
     # Create SNS topic ARNs
     sns_urgent = f'arn:aws:sns:{region}:{account_id}:rackspace-support-urgent'
-    sns_customer = 'arn:aws:sns:ap-southeast-1:347967984206:347967984206-ap-southeast-1-modops-alerts'
+    sns_customer = 'arn:aws:sns:us-east-2:508437877980:508437877980-us-east-2-modops-alerts'
 
     # Create CloudWatch client
     cw = session.client('cloudwatch')

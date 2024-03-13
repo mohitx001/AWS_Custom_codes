@@ -22,6 +22,7 @@ sheet = workbook.active
 sheet.title = 'Instance Details'
 
 # Write account ID
+print(' [\u2713] creating workbook \n')
 account_id = boto3.client('sts').get_caller_identity().get('Account')
 account_cell = sheet['A1']
 account_cell.value = f'Account ID: {account_id} ({args.region})'
@@ -31,6 +32,7 @@ account_cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_t
 sheet.merge_cells('A1:K1')
 
 # Write headers
+print(' [\u2713] Adding header \n')
 headers = ['Service', 'Instance_Name', 'Instance_ID', 'Instance Class', 'State', 'Platform', 'Detailed Monitoring', 'SSM_Agent', 'CW_Agent', 'AutoScalingGroup', 'Remarks']  # Updated headers
 for col, header in enumerate(headers, start=1):
     cell = sheet.cell(row=2, column=col, value=header)
@@ -39,13 +41,14 @@ for col, header in enumerate(headers, start=1):
     cell.alignment = Alignment(horizontal='center', vertical='center')
 
 # Write EC2 details to Excel
+print(' [\u2713] Instance details finding \n')
 row = 3
+instance_count= sum(1 for _ in instances['Reservations'] for _ in _['Instances'])
+print(f' [\u2B50] Total instances present are : {instance_count} \n ' )
 for reservation in instances['Reservations']:
     for instance in reservation['Instances']:
         instance_id = instance['InstanceId']
-
-        ##test
-                
+      
         # Check if SSM agent is installed
         ssm_client = boto3.client('ssm', region_name=args.region)
         ssm_status = ''
@@ -73,17 +76,13 @@ for reservation in instances['Reservations']:
                 cw_status = 'Not Installed'
         except cw_client.exceptions.ResourceNotFoundException:
             cw_status = 'Not Installed or No Alarms Configured'
-
-
-
-
-
             
         instance_name = ''
-        for tag in instance['Tags']:
-            if tag['Key'] == 'Name':
-                instance_name = tag['Value']
-                break
+        if 'Tags' in instance:
+            for tag in instance['Tags']:
+                if tag["Key"] == "Name":
+                    instance_name = tag["Value"]
+                    break
         instance_class = instance['InstanceType']
         state = instance['State']['Name']
         platform = instance.get('Platform', 'Linux/Unix')  # Default to Linux/Unix if platform is not specified
@@ -93,7 +92,7 @@ for reservation in instances['Reservations']:
         # Check if the instance is part of an Auto Scaling group
         response = autoscaling.describe_auto_scaling_instances(InstanceIds=[instance_id])
         auto_scaling_group = response['AutoScalingInstances'][0]['AutoScalingGroupName'] if response['AutoScalingInstances'] else 'Not in Auto Scaling Group'
-
+        print(f' \t [\u2699] Working on instance name : {instance_name} \n ' )
         data = ['EC2', instance_name, instance_id, instance_class, state, platform, monitoring_state, ssm_status, cw_status, auto_scaling_group, '']  # Updated data
         for col, value in enumerate(data, start=1):
             cell = sheet.cell(row=row, column=col, value=value)
@@ -124,6 +123,7 @@ for col, header in enumerate(rds_headers, start=2):
     cell.alignment = Alignment(horizontal='center', vertical='center')
 
 # Write RDS details to Excel
+print(' [\u2713] Adding RDS detals \n')
 row += 1
 #row is 9 here
 for rds_instance in rds_instances['DBInstances']:
@@ -155,6 +155,7 @@ rds_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 rds_service_cell.fill = PatternFill(start_color="FFFAF0", end_color="FFFAF0", fill_type="solid")
 
 # Get all Auto Scaling groups
+print(' [\u2713] adding Autoscalling details \n')
 autoscaling_groups = autoscaling.describe_auto_scaling_groups()
 
 # Write Auto Scaling Group headers
@@ -194,6 +195,7 @@ asg_service_cell.value = 'ASG'
 asg_service_cell.font = Font(bold=True)
 asg_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 asg_service_cell.fill = PatternFill(start_color="F08080", end_color="F08080", fill_type="solid")
+print(' [\u2713] Task completed successfully \n')
 
 
 
