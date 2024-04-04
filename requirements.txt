@@ -28,3 +28,4 @@ tzdata
 urllib3
 wcwidth
 XlsxWriter
+colorama

@@ -3,7 +3,7 @@ import boto3
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment
 import argparse
-
+from colorama import Fore, Style
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description='Extract instance details and save to Excel')
 parser.add_argument('-r', '--region', help='AWS Region', required=True)
@@ -22,7 +22,7 @@ sheet = workbook.active
 sheet.title = 'Instance Details'
 
 # Write account ID
-print(' [\u2713] creating workbook \n')
+print(f'{Fore.GREEN} [\u2713] Creating workbook {Style.RESET_ALL} \n')
 account_id = boto3.client('sts').get_caller_identity().get('Account')
 account_cell = sheet['A1']
 account_cell.value = f'Account ID: {account_id} ({args.region})'
@@ -32,7 +32,7 @@ account_cell.fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_t
 sheet.merge_cells('A1:K1')
 
 # Write headers
-print(' [\u2713] Adding header \n')
+print(f'{Fore.GREEN} [\u2713] Adding header {Style.RESET_ALL}\n')
 headers = ['Service', 'Instance_Name', 'Instance_ID', 'Instance Class', 'State', 'Platform', 'Detailed Monitoring', 'SSM_Agent', 'CW_Agent', 'AutoScalingGroup', 'Remarks']  # Updated headers
 for col, header in enumerate(headers, start=1):
     cell = sheet.cell(row=2, column=col, value=header)
@@ -41,10 +41,10 @@ for col, header in enumerate(headers, start=1):
     cell.alignment = Alignment(horizontal='center', vertical='center')
 
 # Write EC2 details to Excel
-print(' [\u2713] Instance details finding \n')
+print(f'{Fore.GREEN} [\u2713] Finding Instance Details {Style.RESET_ALL} \n')
 row = 3
 instance_count= sum(1 for _ in instances['Reservations'] for _ in _['Instances'])
-print(f' [\u2B50] Total instances present are : {instance_count} \n ' )
+print(f' {Fore.YELLOW} [\u2B50] Total instances present are : {instance_count} {Style.RESET_ALL}\n ' )
 for reservation in instances['Reservations']:
     for instance in reservation['Instances']:
         instance_id = instance['InstanceId']
@@ -63,20 +63,34 @@ for reservation in instances['Reservations']:
         
         # Check if CloudWatch agent is installed
         cw_client = boto3.client('cloudwatch', region_name=args.region)
-        cw_status = ''
-        try:
-            cw_response = cw_client.describe_alarms_for_metric(
-                MetricName='Memory % Committed Bytes In Use',
-                Namespace='CWAgent',
-                Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}]
-            )
-            if cw_response['MetricAlarms']:
-                cw_status = 'Installed'
-            else:
-                cw_status = 'Not Installed'
-        except cw_client.exceptions.ResourceNotFoundException:
-            cw_status = 'Not Installed or No Alarms Configured'
-            
+        memory_metric_name = ""
+        disk_metric_name = ""
+        
+        cw_metrics = cw_client.list_metrics(
+            Dimensions=[
+                {
+                    'Name': 'InstanceId',
+                    'Value': instance_id
+                },
+            ]
+        ).get('Metrics')
+        
+        metric_list = []
+        cw_agent_list = []
+        custom_namespace_list = []
+        
+        for data in cw_metrics:
+            for x in list(data['Namespace'].split(" ")):
+                if x not in metric_list:
+                    metric_list.append(x)
+            if "Memory Available MBytes" not in data['MetricName'] and "Memory" in data['MetricName'] or "mem" in data[
+                'MetricName']:
+                memory_metric_name = data['MetricName']
+        
+            elif "LogicalDisk % Free Space" in data['MetricName'] or "disk_used_percent" in data['MetricName']:
+                disk_metric_name = data['MetricName']
+
+        # preparing for workbook creation    
         instance_name = ''
         if 'Tags' in instance:
             for tag in instance['Tags']:
@@ -88,11 +102,28 @@ for reservation in instances['Reservations']:
         platform = instance.get('Platform', 'Linux/Unix')  # Default to Linux/Unix if platform is not specified
         region = args.region
         monitoring_state = instance['Monitoring']['State'] if 'Monitoring' in instance and 'State' in instance['Monitoring'] else 'Disabled'
+        
+        print(f'  \t {Fore.MAGENTA} [\u269B ] Working on instance name : {instance_name} {Style.RESET_ALL} \n ' )
+        # print(custom_metric_list)
+        print(f' \t \t [\u26A1] memory metric name is: {Fore.GREEN}{memory_metric_name}{Style.RESET_ALL} \n ' )
+        print(f' \t \t [\u26A1] disk metric name is: {Fore.GREEN}{disk_metric_name}{Style.RESET_ALL} \n ' )
+
+        
+        cw_status = ''
+        try:
+            if memory_metric_name in ["mem_used_percent", "Memory % Committed Bytes In Use", "Memory Available MBytes"] or disk_metric_name in ["LogicalDisk % Free Space", "disk_used_percent"]:
+                cw_status = "installed"
+            else:
+                cw_status = "not installed"
+
+        except cw_client.exceptions.ResourceNotFoundException:
+            cw_status = 'Not Installed or No Alarms Configured'
+
+
 
         # Check if the instance is part of an Auto Scaling group
         response = autoscaling.describe_auto_scaling_instances(InstanceIds=[instance_id])
         auto_scaling_group = response['AutoScalingInstances'][0]['AutoScalingGroupName'] if response['AutoScalingInstances'] else 'Not in Auto Scaling Group'
-        print(f' \t [\u2699] Working on instance name : {instance_name} \n ' )
         data = ['EC2', instance_name, instance_id, instance_class, state, platform, monitoring_state, ssm_status, cw_status, auto_scaling_group, '']  # Updated data
         for col, value in enumerate(data, start=1):
             cell = sheet.cell(row=row, column=col, value=value)
@@ -123,7 +154,7 @@ for col, header in enumerate(rds_headers, start=2):
     cell.alignment = Alignment(horizontal='center', vertical='center')
 
 # Write RDS details to Excel
-print(' [\u2713] Adding RDS detals \n')
+print(f' {Fore.GREEN} [\u2713] Adding RDS detals {Style.RESET_ALL} \n')
 row += 1
 #row is 9 here
 for rds_instance in rds_instances['DBInstances']:
@@ -155,7 +186,7 @@ rds_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 rds_service_cell.fill = PatternFill(start_color="FFFAF0", end_color="FFFAF0", fill_type="solid")
 
 # Get all Auto Scaling groups
-print(' [\u2713] adding Autoscalling details \n')
+print(f' {Fore.GREEN} [\u2713] Adding Autoscalling details {Style.RESET_ALL} \n')
 autoscaling_groups = autoscaling.describe_auto_scaling_groups()
 
 # Write Auto Scaling Group headers
@@ -195,7 +226,7 @@ asg_service_cell.value = 'ASG'
 asg_service_cell.font = Font(bold=True)
 asg_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 asg_service_cell.fill = PatternFill(start_color="F08080", end_color="F08080", fill_type="solid")
-print(' [\u2713] Task completed successfully \n')
+print(f' {Fore.GREEN} [\u2713] Task completed successfully {Style.RESET_ALL} \n')
 
 
 
