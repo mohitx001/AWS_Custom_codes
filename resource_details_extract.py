@@ -226,10 +226,61 @@ asg_service_cell.value = 'ASG'
 asg_service_cell.font = Font(bold=True)
 asg_service_cell.alignment = Alignment(horizontal='center', vertical='center')
 asg_service_cell.fill = PatternFill(start_color="F08080", end_color="F08080", fill_type="solid")
+
+
+
+#################################
+
+# Get all RDS cluster groups
+
+print(f' {Fore.GREEN} [\u2713] Adding RDS cluster details {Style.RESET_ALL} \n')
+RDS_cluster = rds.describe_db_clusters()
+
+# Write RDS cluster headers
+RDS_C_headers = ['RDS Cluster Name', 'Endpoints', 'class' , 'state', 'engine', 'version' ,'Remarks']
+for col, header in enumerate(RDS_C_headers, start=2):
+    cell = sheet.cell(row=row, column=col, value=header)
+    cell.font = Font(bold=True)
+    cell.fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+# Write RDS cluster details to Excel
+row += 1
+for cluster in RDS_cluster['DBClusters']:
+    cluster_name = cluster['DatabaseName']
+    cluster_endpoint = cluster['Endpoint']
+    cluster_class = cluster['EngineMode']
+    cluster_state = cluster['Status']
+    cluster_engine = cluster['Engine']
+    cluster_version = cluster['EngineVersion']
+    cluster_remarks = ''  # You can add remarks here if needed
+
+    cluster_data = [cluster_name, cluster_endpoint,cluster_class,cluster_state,cluster_engine,cluster_version,'']
+    for col, value in enumerate(cluster_data, start=2):
+        cell = sheet.cell(row=row, column=col, value=value)
+        if row > 2 or col > 1:  # Align everything to the left except for row 1, row 2, and column 1
+            cell.alignment = Alignment(horizontal='left', vertical='center')
+        else:  # Keep row 1, row 2, and column 1 centered
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+    row += 1
+
+# Merge the cells in the first column for the "ASG" service
+cluster_service_cell = sheet.cell(row=asg_last_row+1, column=1)
+#row is 9,so cluster last row is 8 and asg last row is 6
+cluster_last_row = row - 1
+sheet.merge_cells(start_row=asg_last_row+1, start_column=1, end_row=cluster_last_row, end_column=1) # for service cell
+sheet.merge_cells(start_row=asg_last_row+1, start_column=8, end_row=asg_last_row+1, end_column=11) # for header cell
+sheet.merge_cells(start_row=cluster_last_row, start_column=8, end_row=cluster_last_row, end_column=11) # for header cell
+cluster_service_cell.value = 'RDS Cluster'
+cluster_service_cell.font = Font(bold=True)
+cluster_service_cell.alignment = Alignment(horizontal='center', vertical='center')
+cluster_service_cell.fill = PatternFill(start_color="FF00FF", end_color="FF00FF", fill_type="solid")
+################################
+
 print(f' {Fore.GREEN} [\u2713] Task completed successfully {Style.RESET_ALL} \n')
 
 
 
 # Save the Excel workbook
 
-workbook.save(f'ResourceId_{account_id}_{args.region}.xlsx')
+workbook.save(f'Resource_{account_id}_{args.region}.xlsx')
